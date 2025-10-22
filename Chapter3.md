@@ -1,5 +1,21 @@
 # 3. Network-based Architectural Styles
 
+## Summary
+
+3장은 네트워크기반 아키텍처에서 흔히 볼 수 있는 스타일들에 대해서 설명합니다.
+
+아키텍처 스타일을 평가할 때 있어서 가장 중요한 것은 속성을 개별로 분류해서 평가하는 것이 아니라 **요구사항 파악**을 통해 속성을 묶어서 해당 속성에 맞게 평가하는 것이라고 필딩은 말합니다.
+
+그리고 필딩은 여기서 3.8.3절에서 미들웨어를 언급하면서 
+
+  "Architecture research regarding middleware focuses on the problems and effects of integrating components with off-the-shelf middleware."
+
+라고 언급합니다.
+
+기존의 단순 기술 사용이 아니라, 요구사항(problem)과 아키텍처에 미치는 영향(effect)에 집중한다고 언급합니다.
+
+즉, 무엇을 썼는지가 중요한 것이 아니라 **품질**에 신경쓰겠다는 것을 강조하는 겁니다.
+
 ## 3.1 Classification Methodology
 
 저자는 소프트웨어를 만드는 것이 **요구사항 충족**에 있지, topology나 component type을 위한 것이 아니라고 처음부터 강조합니다.
