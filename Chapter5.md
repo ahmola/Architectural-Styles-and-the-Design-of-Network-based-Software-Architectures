@@ -159,7 +159,7 @@ React가 등장하면서 각종 javascript 기반 웹 클라이언트가 나오�
 
 REST는 내부 구현이나 프로토콜이 아니라 **웹이 왜 이렇게 작동하는가**의 본질을 설명하는 이론임을 강조합니다.
 
-### 5.2.1 데이터 요소
+### 5.2.1 Data Elements
 
 기존의 분산 아키텍처에서는 모든 내부 데이터를 숨겼지만 REST에서는 형태와 위치가 중요하다고 주장합니다.
 
@@ -191,3 +191,177 @@ REST 데이터 요소 요약
   - Control Data: 요청/응답의 목적을 제어하는 데이터 (ex. Cache-Control, If-Modified-Since)
 
 #### 5.2.1.1 Resource and Resource Identifier
+
+REST의 핵심 추상화는 바로 Resource입니다.
+
+Resource는 이름 붙일 수 있는 모든 것입니다.
+
+문서, 이미지, 물리적 객체, 가상의 개념 등을 예로 들 수 있습니다.
+
+수학적으로 표현하면, 시간에 따라 변하는 값들의 집합의 함수로
+
+  R = 리소스
+  MR(t) = 시간 t에서 리소스 값의 집합
+
+예를 들자면, /paper/preferred -> 선호되는 논문 버전(시간에 따라 선호도가 변하면서 결과값도 변화)와 /paper/conferenceX -> 학회 발표용 버전(고정값)
+
+이렇게 두 리소스가 있을 때, 같은 데이터를 가리켜도 **의미**적 매핑이 다르기 때문에 다른 리소스로 분류해야 합니다.
+
+즉, 리소스가 데이터 자체가 아니라 **데이터를 지칭하는 개념적 이름**이라고 봐야 한다고 말합니다.
+
+Resource Identifier는 그 개념을 지칭하는 문자열입니다.
+
+Spring으로 예를 들면
+
+  @RestController
+  @RequestMapping("/users")
+  public class UserController {
+  
+      @GetMapping("/{id}")
+      public ResponseEntity<UserDto> getUser(@PathVariable Long id) {
+          return ResponseEntity.ok(userService.findById(id));
+      }
+  }
+
+  - /users/{id} → Resource Identifier Template
+	- /users/1 → Resource Identifier Instance
+  - UserDto → Resource Representation
+
+즉,
+
+  Resource Identifier  →  /users/1
+  Resource             →  User(id=1)
+  Representation       →  {"id":1,"name":"Jason"}
+
+이렇게 세 가지가 합쳐져서 RESTful이 됩니다.
+
+또한 Resource Identifier는 고유성, 불변성, 추상성, 분산 가능성을 가져아합니다.
+
+리소스의 상태가 변하더라도 항상 같은 개념적 대상을 가르켜야하므로 식별자를 설계할 때는 동사적 행위가 들어가면 안되고, 위치만 들어가야합니다.
+
+즉,
+
+  "/createUser", "/getUser/1"
+
+이런 식으로 URL을 명명하는 것은 안된다는 것을 강조합니다.
+
+#### 5.2.1.2 Representation
+
+REST 컴포넌트들은 State를 Representation이라는 형태로 주고받습니다.
+
+필딩은 Representation을 다음과 같이 정의합니다.
+
+  A representation is a sequence of bytes, plus representation metadata to describe those bytes.
+
+  Representation = byte 시퀀스 + byte 메타데이터
+
+예를 들어, 서버가 클라이언트에 JSON 형태로 응답을 보내면, JSON이 해당 리소스의 표현(Representation)이 됩니다.
+
+표현의 구성요소로,
+
+  - Data: 실제 데이터
+  - Representation Metadata: 표현 메타데이터(Content-Type, Content-Length 등)
+  - Resource Metadata: 리소스 부가 정보(ETag, Last-Modified 등)
+  - Control Data: 요청/응답 목적 제어(Cache-Control, If-Modified-Since 등)
+
+표현의 의미는 요청의 목적(HTTP 메소드)에 따라 표현이 달라질 수 있습니다.
+
+  - GET: 현재 상태 표현(조회)
+  - POST: 새 상태 전송(생성)
+  - PUT: 변경할 상태 전송(수정)
+  - DELETE: 상태 삭제 요청(삭제)
+
+표현의 형태는 Media Type으로 정의합니다.
+
+이러한 Media Type의 설계는 사용자 체감 성능에 직접적인 영향을 미친다고 필딩은 주장합니다.
+
+그러면 예를 하나 드는데, 네트워크 상태가 같아도 HTML의 경우 브라우저가 점진적으로 렌더링하므로 사용자 체감 성능이 완전히 다 받아서 한꺼번에 실행하는 것보다 좋게 느껴진다고 주장합니다.
+
+그렇기 때문에, 어떤 Media Type을 선택할지도 UX와 성능에 직접적인 영향을 미친다고 강조합니다.
+
+### 5.2.2 Connectors
+
+REST는 리소스에 접근하고 리소스의 표현을 전송하는 활동을 캡슐화하기 위해 다양한 커넥터를 사용합니다.
+
+즉, 커넥터는 컴포넌트 내 통신 경로를 추상화한 계층입니다.
+
+커넥터에는
+
+  - client(Postman, 브라우저, REST Template): request를 시작, 서버로 request를 보내 response를 받음.
+  
+  - server(Spring 내장 Tomcat, Nginx, Apache): 서비스 접근을 제공, request를 받아 response를 제공, 하나의 컴포넌트가 server와 client 커넥터 모두 가질 수 있음(API Gateway가 그 예)
+  
+  - cache(브라우저 캐시, 캐시 네트워크 등): 클라이언트나 서버 인터페이스에 존재, 재사용 가능한 응답 저장하여 재활용. 캐시는 해당 컴포넌트의 메모리 공간에서 구현.
+  클라이언트에서는 브라우저 캐시나 HTTP 캐시 등으로 네트워크 트래픽 감소에 기여하고, 서버에서는 같은 요청에 응답을 줄여 서버 부하를 줄여줌.
+  공유 캐시는 여러 클라이언트가 같은 캐시를 사용함. 서버 부하가 감소하나 데이터의 최신성을 맞춰주지 않으면 신뢰도가 떨어지고 너무 최신성을 자주 업데이트하면 효율이 떨어짐.
+  기본적으로 GET요청은 캐시가 가능하나, POST, PUT, DELETE는 캐시 불가. 사용자 인증이나 공유 금지된 응답은 개인 캐시에서만 사용가능. 이러한 캐시 정책을 Cache-Control등의 제어 데이터로 명시 가능
+  
+  - resolver(bind 등): URI를 실제 네트워크 주소로 변환. "http://www.example.com"이 있다면, "example.com"을 DNS resolver로 IP 주소로 변환.
+  이렇게 resolver를 두게 되면, ip주소가 변경되어도 리소스 접근이 유지되지만 지연 시간이 증가함.
+  
+  - tunnel(SSL, SOCKS 등): 방화벽 등의 단순 중계자. 일부 REST의 컴포넌트들은 동적으로 터널 모드로 전환이 가능함.
+  예를 들어, HTTP 프록시가 CONNECT 메소드를 수신하여 SSL 연결 요청을 받으면 SSL 프로토콜 통신을 위한 터널로 바뀜. 연결이 종료되면 터널도 사라짐
+
+이러한 유형이 있으며, 컴포넌트 간 통신을 위해 추상적 인터페이스를 제공합니다.
+
+추상화 인터페이스로 구현 교체도 가능합니다.
+
+즉, 통로가 추상화되어 내부 구현을 바꿔도 사용자에게 영향이 가지 않습니다.
+
+그렇기 때문에, 컴포넌트들은 직접 연결되는 것이 아니라 커넥터라는 내장 네트워크 모듈을 통해 간접적으로 연결되는 구조를 가지게 됩니다.
+
+Spring의 경우, 이러한 연결을 위해 내장 Tomcat을 기본적으로 제공하고, 다른 서비스 호출을 위해선 Client Connector를 사용합니다.
+
+모든 REST의 요청은 stateless입니다.
+
+상태를 저장하지 않기 때문에, 각 요청은 이전 요청과 독립적이며, 요청을 이해하는데 필요한 모든 정보가 요청에 포함되어야 합니다.
+
+이러한 제약으로,
+
+  1. 상태 저장 불필요: 요청 간 상태 기억 불필요(리소스 절약 + 확장성 향상)
+  2. 병렬 처리 용이: 요청 간 의존이 없어 여러 요청을 동시 수행
+  3. 중개자 이해 가능: 요청이 독립적이어서 중간 계층에서도 요청 분석 가능
+  4. 캐싱 효율성 향상: 재사용 가능한 응답을 만들 수 있음
+
+이런 효과를 얻을 수 있습니다.
+
+커넥터의 인터페이스는 Procedural Invocation과 비슷하지만, 매개변수를 주고받는 방식에는 차이가 있습니다.
+
+  - 입력 매개변수: 요청 제어 데이터, 리소스 식별자, 선택적 표현
+  - 출력 매개변수: 응답 제어 데이터, 선택적 리소스 메타데이터, 선택적 표현
+
+언뜻 보기에는 동기식 호출로 보일 수도 있지만, 데이터는 스트리밍으로 전달이 가능합니다.
+
+모든 데이터를 다 받고 처리하는게 아니라, 데이터를 받는 동안에도 처리하는 방식으로, 지연 시간을 줄이는 효과가 있습니다.
+
+### 5.2.3 Components
+
+컴포넌틑 네트워크 상의 참여자들로, 역할을 기준으로 구분되었습니다.
+
+커넥터가 통로로써 연결을 담당했다면, 컴포넌트는 통신의 주체로 실제 행위를 합니다.
+
+  - User Agent: 클라이언트 커넥터를 사용하여 request를 시작하고 response의 최종 수신자가 됩니다. 리소스 조작의 시작점으로, 가장 흔히 볼 수 있는 것이 웹 브라우저입니다.
+
+  - Origin Server: 서버 커넥터를 사용해 요청된 리소스의 네임스페이스를 관리합니다. 쉽게 말해, 리소스의 최종 소유자입니다.
+  리소스 변경에 관한 요청은 반드시 최종 목적지로 origin server에서 끝나야 합니다. 세부 구현 사항은 표준 인터페이스에 숨겨집니다.
+
+  - Intermediary Components: 중개자로, 클라이언트와 서버 양쪽의 역할을 동시에 수행하는 컴포넌트입니다. 요청과 응답을 forward(전달)하거나 transition(변환)합니다.
+  Proxy와 Gateway가 있습니다.
+
+    - Proxy: 클라이언트가 선택하여 사용되는 클라이언트의 대리자입니다. 클라이언트는 프록시를 통해 요청을 대신 보내며, 프록시가 원 서버로 요청을 전달하고 응답을 되돌려줍니다.
+    다른 서비스의 인터페이스 캡슐화, 데이터 변환, 성능 향상, 보안 강화를 목적으로 합니다.
+  
+    - Gateway(Reverse Proxy): 네트워크나 서버 쪽에서 강제로 두는 중개자입니다. 내부 서비스들을 외부로부터 보호하고, 데이터 변환, 성능 향상, 보안 등을 수행합니다.
+    Proxy와 Gateway의 차이는 **누가 선택하느냐**입니다. Proxy는 클라이언트가, Gateway는 서버 또는 네트워크가 구성해서 클라이언트가 강제로 통과하도록 하게 끔 합니다.
+
+정리하면, REST에서 컴포넌트는 실제 행위자로, User Agent가 요청을 시작 -> Proxy/Gateway가 요청 중개 및 필터 -> Origin Server가 최종 응답이라는 흐름이 완성됩니다.
+
+
+## 5.3 REST Architectural View
+
+이 절에서는 REST 아키텍처 스타일이 실제로 어떻게 작동하는지를 입체적으로 설명합니다.
+
+### 5.3.1 Process View
+
+실제 시스템에서는 매우 많은 컴포넌트들이 상호작용하여 전체 데이터 흐름이 세부사항에 가려져 복잡하게 보이는 경우가 많다고 말합니다.
+
